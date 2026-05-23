@@ -1,0 +1,22 @@
+{
+    "schemaVersion": 1,
+    "id": "flux-client",
+    "version": "${version}",
+    "name": "Flux Client",
+    "description": "去中心化 Minecraft 多人同步客户端",
+    "authors": ["Flux"],
+    "contact": {},
+    "license": "MIT",
+    "icon": "assets/flux-client/icon.png",
+    "environment": "client",
+    "entrypoints": {
+        "client": ["com.flux.client.FluxClient"]
+    },
+    "mixins": ["flux-client.mixins.json"],
+    "depends": {
+        "fabricloader": ">=0.15.0",
+        "fabric-api": "*",
+        "minecraft": "~1.20.1",
+        "java": ">=17"
+    }
+}
