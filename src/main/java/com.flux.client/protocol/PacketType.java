@@ -32,6 +32,9 @@ public enum PacketType {
     BROADCAST_BLOCK      (0x31, "Broadcast: Block Changed"),
     BROADCAST_ENTITY     (0x32, "Broadcast: Entity Update"),
     BROADCAST_INVENTORY  (0x33, "Broadcast: Inventory Sync"),
+    BROADCAST_CHAT       (0x34, "Broadcast: Chat"),
+    BROADCAST_PLAYER_JOIN  (0x35, "Broadcast: Player Joined"),
+    BROADCAST_PLAYER_LEAVE (0x36, "Broadcast: Player Left"),
 
     // === 控制 ===
     ROLLBACK             (0x40, "Rollback"),
@@ -44,8 +47,7 @@ public enum PacketType {
 
     // === 其他 ===
     DISCONNECT           (0xFF, "Disconnect"),
-    CHAT_MESSAGE         (0x28, "Chat Message"),
-    BROADCAST_CHAT       (0x34, "Broadcast: Chat");
+    CHAT_MESSAGE         (0x28, "Chat Message");
 
     public final byte code;
     public final String description;
