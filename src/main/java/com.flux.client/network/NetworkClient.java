@@ -32,6 +32,10 @@ public class NetworkClient {
 
     private volatile boolean connected = false;
     private volatile boolean authenticated = false;
+
+    // ★ 同步阶段标志：为 true 时 pollIncomingPackets() 不消费队列，防止与 waitForPacket 竞争
+    private volatile boolean syncing = false;
+
     private Thread readThread;
 
     // 缓存同步阶段收到的 CHUNK_LOG_ENTRY 包，供 WorldSync 回放
@@ -106,7 +110,11 @@ public class NetworkClient {
         return authenticateAndSync(uuid, username);
     }
 
+    /**
+     * ★ 修复：同步阶段（syncing=true）时跳过消费，防止与 authenticateAndSync 的 waitForPacket 竞争
+     */
     public void pollIncomingPackets() {
+        if (syncing) return;  // 同步进行中，不消费队列
         while (!inboundQueue.isEmpty()) {
             FluxPacket pkt = inboundQueue.poll();
             if (pkt != null && packetCallback != null) {
@@ -128,6 +136,8 @@ public class NetworkClient {
         }
         this.authenticated = true;
 
+        // ★ 进入同步阶段，阻止 render 线程的 pollIncomingPackets 消费队列
+        syncing = true;
         FluxClient.LOGGER.info("[Flux] 开始同步世界数据...");
         boolean syncFinished = false;
         while (!syncFinished && connected) {
@@ -143,9 +153,19 @@ public class NetworkClient {
                 // 缓存事件回放包，供 WorldSync 后续使用
                 cachedSyncPackets.add(pkt);
             } else {
-                if (packetCallback != null) packetCallback.accept(pkt.getType(), pkt.getPayload());
+                // 这些包在同步完成后会由 pollIncomingPackets 自然处理（如果服务端重发）
+                // 或者在此直接缓存，同步结束后由 pollIncomingPackets 消费
+                FluxClient.LOGGER.debug("[Flux] Sync phase: deferring packet {} ({} bytes)", pkt.getType(), pkt.getPayload().length);
+                // 不要 offer 回去，因为 waitForPacket 已经取出了
+                // 放回队列末尾，等同步完成后再处理
+                inboundQueue.offer(pkt);
             }
         }
+
+        // ★ 同步完成，退出同步阶段
+        syncing = false;
+        FluxClient.LOGGER.info("[Flux] Sync phase complete, {} cached packets, queue size: {}",
+                cachedSyncPackets.size(), inboundQueue.size());
         return true;
     }
 
@@ -234,6 +254,7 @@ public class NetworkClient {
 
     public void disconnect() {
         connected = false;
+        syncing = false;
         try { if (tcpSocket != null) tcpSocket.close(); } catch (IOException e) {}
     }
 }
