@@ -83,11 +83,6 @@ Flux 服务端的职责：
 加密/解密 + 数据包合法性校验 + 广播转发 + 事件日志
 ```
 
-服务端不知道"钻石矿长什么样"，不知道"僵尸怎么走路"，它只知道：
-- 这个玩家移动速度是否超过 10 m/s？
-- 这个玩家攻击距离是否超过 4.5 格？
-- 这个方块操作是否符合因果关系？
-
 ### 2.2 四条规则
 
 Flux 的防作弊不依赖复杂的游戏逻辑，只检查四条不可违反的物理边界：
@@ -196,35 +191,7 @@ TCP 发送到 Flux 服务端
 
 ## 4. 核心模块
 
-### 4.1 模块总览
-
-```
-Flux-server/                        ← 服务端（Python）
-├── config.py                       ← 全局配置
-├── protocol.py                     ← 二进制协议层
-├── crypto_engine.py                ← ECDH + AES-128-GCM
-├── packet_validator.py             ← 防作弊校验器
-├── event_logger.py                 ← 事件日志 + 哈希链
-├── relay_engine.py                 ← 中继引擎 + 区块所有权
-├── server.py                       ← TCP 服务主逻辑
-└── main.py                         ← 入口
-
-Flux-fabric-mod/                    ← 客户端（Java / Fabric Mod）
-├── FluxClient.java                 ← 主入口
-├── FluxConfig.java                 ← 配置
-├── crypto/CryptoEngine.java        ← 加密引擎
-├── protocol/Protocol.java          ← 协议常量
-├── protocol/PacketBuilder.java     ← 包构建器
-├── network/NetworkClient.java      ← TCP 客户端
-├── mod/EventInterceptor.java       ← 事件拦截器
-├── mod/FabricEventRegistrar.java   ← Fabric 事件注册
-├── world/BroadcastHandler.java     ← 广播包处理
-└── mixin/*.java                    ← Mixin 注入
-
-Fluxmonitor.py                      ← 监控面板（Python / GUI）
-```
-
-### 4.2 加密引擎 (crypto_engine)
+### 4.1 加密引擎 (crypto_engine)
 
 **职责**：密钥协商 + 数据加解密
 
@@ -248,7 +215,7 @@ Fluxmonitor.py                      ← 监控面板（Python / GUI）
 - 认证加密：AES-GCM 同时提供保密性和完整性，任何篡改都会被检测
 - 防重放：每个包携带递增的 SeqID，拒绝重复或乱序的包
 
-### 4.3 二进制协议层 (protocol)
+### 4.2 二进制协议层 (protocol)
 
 **职责**：定义所有数据包的格式、编解码
 
@@ -285,7 +252,7 @@ Fluxmonitor.py                      ← 监控面板（Python / GUI）
 | 心跳 | 0x50 | PING | 服务端→客户端 | 4B |
 | 心跳 | 0x51 | PONG | 客户端→服务端 | 4B |
 
-### 4.4 包校验器 (packet_validator)
+### 4.3 包校验器 (packet_validator)
 
 **职责**：执行四条防作弊规则
 
@@ -303,7 +270,7 @@ Fluxmonitor.py                      ← 监控面板（Python / GUI）
 | Lv.2 | 连续 3 次篡改 | 冻结客户端 | 世界静止，无法交互 |
 | Lv.3 | 累计 5 次或畸形包 | 踢出 | 弹出"连接被关闭" |
 
-### 4.5 事件日志引擎 (event_logger)
+### 4.4 事件日志引擎 (event_logger)
 
 **职责**：记录所有游戏事件，支持世界同步和审计
 
@@ -332,7 +299,7 @@ Flux_data/
     └── ...
 ```
 
-### 4.6 中继引擎 (relay_engine)
+### 4.5 中继引擎 (relay_engine)
 
 **职责**：客户端管理 + 区块所有权 + 盲转发广播
 
@@ -358,7 +325,7 @@ for 每个活跃客户端:
 
 每个客户端使用独立的会话密钥，服务端无法伪造其他客户端的数据。
 
-### 4.7 TCP 服务端 (server)
+### 4.6 TCP 服务端 (server)
 
 **职责**：接受 TCP 连接，驱动整个服务端流程
 
@@ -404,12 +371,11 @@ for 每个活跃客户端:
 
 ### 6.1 三根支柱
 
-| 支柱 | 算法 | 解决的问题 |
-|------|------|-----------|
-| 动态密钥 | ECDH (X25519) | "我们是谁" — 每次连接全新临时密钥 |
-| 流加密 | AES-128-GCM | "数据没被看且没被改" — 认证加密 |
-| 防重放 | SeqID 单调递增 | "这句话你刚才已经说过了" |
-
+| 支柱 | 算法 |
+|------|------|
+| 动态密钥 | ECDH (X25519) |
+| 流加密 | AES-128-GCM |
+| 防重放 | SeqID 单调递增 |
 ### 6.2 密钥生命周期
 
 ```
@@ -736,10 +702,6 @@ Flux 检查四条不可违反的物理边界。客户端可以尝试发送假数
 ### Q: 支持多少玩家？
 
 理论上无上限。服务端只做校验和转发，不运行游戏逻辑。实际限制取决于网络带宽和 TCP 连接数。
-
-### Q: 可以用手机/平板玩吗？
-
-目前只支持 Minecraft Java Edition + Fabric Mod。Bedrock 版本需要不同的客户端实现。
 
 ### Q: 断线重连后世界会丢失吗？
 
